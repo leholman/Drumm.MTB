@@ -1,5 +1,8 @@
 ####### Data cleaning for Drumm #####
 
+##libraries
+library(RColorBrewer)
+
 ## some functions 
 
 add.alpha <- function(col, alpha=1){
@@ -48,6 +51,121 @@ minAbundance <- function(inputtable = NA, minAbun = 0.01) {
 getPalette = colorRampPalette(brewer.pal(9, "Set3"))
 
 
+minimumReads <- function(data, minreads) {
+  # Ensure the input is either a dataframe or matrix and is numeric
+  if (!is.data.frame(data) && !is.matrix(data)) {stop("Input must be a dataframe or matrix")}
+  if (!all(sapply(data, is.numeric))) {stop("Error: All values must be numeric or integer.")}
+  # Check for NA values
+  if (any(is.na(data))) {stop("Data contains NA values, which are not allowed.")}
+  
+  # Store original row names
+  original_row_names <- row.names(data)
+  
+  # Apply thresholding operation based on the structure of the data
+  if (is.matrix(data)) {
+    # For matrices, use vectorized operation
+    data[data <= minreads] <- 0
+  } else if (is.data.frame(data)) {
+    # For data frames, apply operation column-wise
+    data <- as.data.frame(lapply(data, function(x) ifelse(x <= minreads, 0, x)))
+  }
+  
+  
+  # Get rid of empty rows
+  # For both data frames and matrices, rowSums works and subsetting by rowSums > 0 removes empty rows
+  outdata <- data[rowSums(data > 0) > 0, ]
+  row.names(outdata) <- original_row_names[rowSums(data > 0) > 0]
+  
+  
+  # Return the cleaned data
+  return(outdata)
+}
+minimumReps <- function(data,min_obs) {
+  # Ensure the input is either a dataframe or matrix and is numeric
+  if (!is.data.frame(data) && !is.matrix(data)) {stop("Input must be a dataframe or matrix")}
+  if (!all(sapply(data, is.numeric))) {stop("Error: All values must be numeric or integer.")}
+  # Check for NA values
+  if (any(is.na(data))) {stop("Data contains NA values, which are not allowed.")}
+  
+  # Store original row names
+  original_row_names <- row.names(data)
+  
+  # Determine the input type to return the same type
+  input_type <- ifelse(is.data.frame(data), "data.frame", "matrix")
+  
+  # Calculate the number of non-zero observations per row
+  total_obs <- apply(data, 1, function(row) sum(row > 0, na.rm = TRUE))
+  
+  # Filter rows based on the user-specified minimum number of non-zero observations
+  filtered_data <- data[total_obs >= min_obs, ]
+  
+  # Reapply the original row names to the filtered data
+  row.names(filtered_data) <- original_row_names[total_obs >= min_obs]
+  
+  # Ensure the output is of the same type as the input
+  if (input_type == "matrix") {
+    return(as.matrix(filtered_data))
+  } else {
+    return(as.data.frame(filtered_data))
+  }
+}
+dataCleanBy <- function(inputdata, cleaningdata, method) {
+  # Ensure the input is either a dataframe or matrix and is numeric
+  if (!is.data.frame(inputdata) && !is.matrix(inputdata)) {stop("Input must be a dataframe or matrix")}
+  if (!all(sapply(inputdata, is.numeric))) {stop("Error: All values must be numeric or integer.")}
+  # Check for NA values
+  if (any(is.na(inputdata))) {stop("Data contains NA values, which are not allowed.")}
+  # Validate method parameter
+  if (!method %in% c("max", "min", "avr")) {
+    stop("Method must be 'max', 'min', or 'avr'.")
+  }
+  
+  # Preserve original format of inputdata
+  inputIsDataFrame <- is.data.frame(inputdata)
+  
+  # Convert dataframes to matrices for uniform processing
+  inputdata <- as.matrix(inputdata)
+  cleaningdata <- as.matrix(cleaningdata)
+  
+  # Ensure both inputs contain only numeric values
+  if (!all(is.numeric(inputdata)) || !all(is.numeric(cleaningdata))) {
+    stop("Both inputs must contain only numeric values.")
+  }
+  
+  # Ensure both inputs have the same number of rows
+  if (nrow(inputdata) != nrow(cleaningdata)) {
+    stop("Both inputs must have the same number of rows.")
+  }
+  
+  # Calculate a metric for each row in cleaningdata based on the specified method
+  metric_values <- switch(method,
+                          "max" = apply(cleaningdata, 1, max),
+                          "min" = apply(cleaningdata, 1, min),
+                          "avr" = apply(cleaningdata, 1, mean))
+  
+  # Vectorized update of inputdata based on the calculated metrics
+  metric_matrix <- matrix(rep(metric_values, each = ncol(inputdata)), 
+                          nrow = nrow(inputdata), 
+                          byrow = TRUE)
+  inputdata[inputdata <= metric_matrix] <- 0
+  
+  # Remove rows in inputdata with only zero values
+  inputdata2 <- inputdata[rowSums(inputdata != 0) > 0, ]
+  message(paste0("Removed ",dim(inputdata)[1]-dim(inputdata2)[1]," ASV/OTUs from samples"))
+  
+  # Return inputdata in its original format
+  if (inputIsDataFrame) {
+    return(as.data.frame(inputdata2))
+  } else {
+    return(inputdata2)
+  }
+}
+
+### Global settings
+min_reads <- 2
+min_reps <- 2
+comp_method <- "avr"
+
 library(RColorBrewer)
 
 ### read in metadata 
@@ -63,6 +181,7 @@ metadata$exp <- sapply(strsplit(metadata$`Nyt navn uden formel`, "\\."), `[`, 1)
 eukv9.dat <- read.csv("rawdata/eukv9.raw.names.csv.gz")
 eukv9.asv <- seqinr::read.fasta("rawdata/OTUS/EUKv9.DADA2.ASVs.fasta",as.string = TRUE)
 eukv9.pr2 <- read.csv("taxonomy/eukv9.tax.PR2.csv")
+eukv9.nt <- read.csv("taxonomy/parsed.Ev9.csv")
 
 unique(metadata$exp)
 
@@ -124,15 +243,29 @@ mtext("Read Abundance",side = 2,line=5)
 legend(48.5,1,rev(rownames(eukv9.c)),col=getPalette(dim(eukv9.c)[1]),cex=0.4,pch=15,pt.cex = 2,bty = "n", xpd = TRUE)
 dev.off()
 
+unique(metadata$exp)
 
+experiments <- c("ICE","ECOTIP","ROCS")
 
+for (experiment in experiments){
 
-c(metadata$`Nyt navn uden formel`[match(colnames(controls),metadata$LV)],"sediment_mean","water_mean")
-  
-match(colnames(controls),metadata$LV)
-colnames(controls)
+controls <- eukv9.dat[,match(metadata$LV[metadata$sample=="C" & grepl(experiment,metadata$exp) ],colnames(eukv9.dat))]
+exp <- eukv9.dat[,match(metadata$LV[(metadata$sample=="W" | metadata$sample=="S")& grepl(experiment,metadata$exp)],colnames(eukv9.dat))]
 
+exp1 <- dataCleanBy(exp,controls,"max")
+exp2 <- minimumReads(exp1,minreads = 2)
+controls1 <- minimumReads(controls,minreads = 1)
 
+colnames(exp2) <- metadata$`Nyt navn uden formel`[match(colnames(exp2),metadata$LV)]
+colnames(controls1) <- metadata$`Nyt navn uden formel`[match(colnames(controls1),metadata$LV)]
 
+exp.out <-cbind(exp2,eukv9.pr2[match(rownames(exp2),eukv9.pr2$X.1),],eukv9.nt[match(rownames(exp2),eukv9.nt$OTU),])
+ctl.out <-cbind(controls1,eukv9.pr2[match(rownames(controls1),eukv9.pr2$X.1),],eukv9.nt[match(rownames(controls1),eukv9.nt$OTU),]) 
 
+outname <- paste0("cleandata/eukv9.",experiment,".csv")
+write.csv(exp.out,outname)
+outname2 <- paste0("controlData/eukv9.",experiment,".csv")
+write.csv(ctl.out,outname2)
+
+}
 
