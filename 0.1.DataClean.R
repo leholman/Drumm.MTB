@@ -171,7 +171,7 @@ library(RColorBrewer)
 ### read in metadata 
 
 metadata <- readxl::read_excel("LV til kilde_nix pille.xlsx")
-metadata$`Nyt navn uden formel`
+
 
 metadata$sample <- sapply(strsplit(metadata$`Nyt navn uden formel`, "\\."), `[`, 2)
 metadata$exp <- sapply(strsplit(metadata$`Nyt navn uden formel`, "\\."), `[`, 1)
@@ -198,7 +198,7 @@ sedAVR <- rowMeans(eukv9.dat[,match(metadata$LV[metadata$sample=="S"],colnames(e
 eukv9.c <-   as.matrix(minAbundance(CountTable(as.character(eukv9.pr2$Division),cbind(controls,sedAVR,waterAVR),output = "Abundance"),minAbun=0.01))
 row.names(eukv9.c)[1] <- "Unknown"
 
-pdf("figures/controls.div.pdf",width=11,height=6)
+pdf("figures/eukv9.controls.div.pdf",width=11,height=6)
 par(mar=c(8.5, 6.1, 1.1, 6.1),xpd=TRUE)
 barplot(eukv9.c[,dim(eukv9.c)[2]:1],las=2,cex.names=0.6,col=getPalette(dim(eukv9.c)[1]),ylab="",border = NA,
         names=rev(c(metadata$`Nyt navn uden formel`[match(colnames(controls),metadata$LV)],"sediment_mean","water_mean")))
@@ -211,7 +211,7 @@ dev.off()
 eukv9.c <-   as.matrix(minAbundance(CountTable(as.character(eukv9.pr2$Class),cbind(controls,sedAVR,waterAVR),output = "Abundance"),minAbun=0.01))
 row.names(eukv9.c)[1] <- "Unknown"
 
-pdf("figures/controls.cls.pdf",width=11,height=6)
+pdf("figures/eukv9.controls.cls.pdf",width=11,height=6)
 par(mar=c(8.5, 6.1, 1.1, 6.1),xpd=TRUE)
 barplot(eukv9.c[,dim(eukv9.c)[2]:1],las=2,cex.names=0.6,col=getPalette(dim(eukv9.c)[1]),ylab="",border = NA,
         names=rev(c(metadata$`Nyt navn uden formel`[match(colnames(controls),metadata$LV)],"sediment_mean","water_mean")))
@@ -223,7 +223,7 @@ dev.off()
 eukv9.c <-   as.matrix(minAbundance(CountTable(as.character(eukv9.pr2$Division),prop.table(as.matrix(cbind(controls,sedAVR,waterAVR)),margin=2),output = "Abundance"),minAbun=0.01))
 row.names(eukv9.c)[1] <- "Unknown"
 
-pdf("figures/controls.div.prop.pdf",width=11,height=6)
+pdf("figures/eukv9.controls.div.prop.pdf",width=11,height=6)
 par(mar=c(8.5, 6.1, 1.1, 6.1),xpd=TRUE)
 barplot(eukv9.c[,dim(eukv9.c)[2]:1],las=2,cex.names=0.6,col=getPalette(dim(eukv9.c)[1]),ylab="",border = NA,
         names=rev(c(metadata$`Nyt navn uden formel`[match(colnames(controls),metadata$LV)],"sediment_mean","water_mean")))
@@ -235,7 +235,7 @@ dev.off()
 eukv9.c <-   as.matrix(minAbundance(CountTable(as.character(eukv9.pr2$Class),prop.table(as.matrix(cbind(controls,sedAVR,waterAVR)),margin=2),output = "Abundance"),minAbun=0.01))
 row.names(eukv9.c)[1] <- "Unknown"
 
-pdf("figures/controls.class.prop.pdf",width=11,height=6)
+pdf("figures/eukv9.controls.class.prop.pdf",width=11,height=6)
 par(mar=c(8.5, 6.1, 1.1, 6.1),xpd=TRUE)
 barplot(eukv9.c[,dim(eukv9.c)[2]:1],las=2,cex.names=0.6,col=getPalette(dim(eukv9.c)[1]),ylab="",border = NA,
         names=rev(c(metadata$`Nyt navn uden formel`[match(colnames(controls),metadata$LV)],"sediment_mean","water_mean")))
@@ -244,6 +244,11 @@ legend(48.5,1,rev(rownames(eukv9.c)),col=getPalette(dim(eukv9.c)[1]),cex=0.4,pch
 dev.off()
 
 unique(metadata$exp)
+
+
+### lets exclude a sample as it looks contaminated 
+metadata$LV == "LV7008887538"
+metadata$sample[metadata$LV == "LV7008887538"] <- "U"
 
 experiments <- c("ICE","ECOTIP","ROCS")
 
@@ -268,4 +273,119 @@ outname2 <- paste0("controlData/eukv9.",experiment,".csv")
 write.csv(ctl.out,outname2)
 
 }
+
+#### next V4
+
+metadata <- readxl::read_excel("LV til kilde_nix pille.xlsx")
+
+
+metadata$sample <- sapply(strsplit(metadata$`Nyt navn uden formel`, "\\."), `[`, 2)
+metadata$exp <- sapply(strsplit(metadata$`Nyt navn uden formel`, "\\."), `[`, 1)
+
+
+eukv4.dat <- read.csv("rawdata/eukv4.raw.names.csv.gz")
+eukv4.asv <- seqinr::read.fasta("rawdata/OTUS/EUKv4.DADA2.ASVs.fasta",as.string = TRUE)
+eukv4.pr2 <- read.csv("taxonomy/eukv4.tax.PR2.csv")
+eukv4.nt <- read.csv("taxonomy/parsed.Ev4.csv")
+
+unique(metadata$exp)
+
+metadata$LV[metadata$sample=="C"]
+
+controls <- eukv4.dat[,na.omit(match(metadata$LV[metadata$sample=="C"],colnames(eukv4.dat)))]
+
+colnames(controls)
+
+waterAVR <- rowMeans(eukv4.dat[,match(metadata$LV[metadata$sample=="W"],colnames(eukv4.dat))])
+sedAVR <- rowMeans(eukv4.dat[,match(metadata$LV[metadata$sample=="S"],colnames(eukv4.dat))])
+
+
+## division
+eukv4.c <-   as.matrix(minAbundance(CountTable(as.character(eukv4.pr2$Division),cbind(controls,sedAVR,waterAVR),output = "Abundance"),minAbun=0.01))
+row.names(eukv4.c)[1] <- "Unknown"
+
+pdf("figures/eukv4.controls.div.pdf",width=11,height=6)
+par(mar=c(8.5, 6.1, 1.1, 6.1),xpd=TRUE)
+barplot(eukv4.c[,dim(eukv4.c)[2]:1],las=2,cex.names=0.6,col=getPalette(dim(eukv4.c)[1]),ylab="",border = NA,
+        names=rev(c(metadata$`Nyt navn uden formel`[match(colnames(controls),metadata$LV)],"sediment_mean","water_mean")))
+mtext("Read Abundance",side = 2,line=5)
+legend(40.5,200000,rev(rownames(eukv4.c)),col=getPalette(dim(eukv4.c)[1]),cex=0.7,pch=15,pt.cex = 2,bty = "n", xpd = TRUE)
+dev.off()
+
+
+## class
+eukv4.c <-   as.matrix(minAbundance(CountTable(as.character(eukv4.pr2$Class),cbind(controls,sedAVR,waterAVR),output = "Abundance"),minAbun=0.01))
+row.names(eukv4.c)[1] <- "Unknown"
+
+pdf("figures/eukv4.controls.cls.pdf",width=11,height=6)
+par(mar=c(8.5, 6.1, 1.1, 6.1),xpd=TRUE)
+barplot(eukv4.c[,dim(eukv4.c)[2]:1],las=2,cex.names=0.6,col=getPalette(dim(eukv4.c)[1]),ylab="",border = NA,
+        names=rev(c(metadata$`Nyt navn uden formel`[match(colnames(controls),metadata$LV)],"sediment_mean","water_mean")))
+mtext("Read Abundance",side = 2,line=5)
+legend(40.5,200000,rev(rownames(eukv4.c)),col=getPalette(dim(eukv4.c)[1]),cex=0.4,pch=15,pt.cex = 1,bty = "n", xpd = TRUE)
+dev.off()
+
+## division prop
+eukv4.c <-   as.matrix(minAbundance(CountTable(as.character(eukv4.pr2$Division),prop.table(as.matrix(cbind(controls,sedAVR,waterAVR)),margin=2),output = "Abundance"),minAbun=0.01))
+row.names(eukv4.c)[1] <- "Unknown"
+
+pdf("figures/eukv4.controls.div.prop.pdf",width=11,height=6)
+par(mar=c(8.5, 6.1, 1.1, 6.1),xpd=TRUE)
+barplot(eukv4.c[,dim(eukv4.c)[2]:1],las=2,cex.names=0.6,col=getPalette(dim(eukv4.c)[1]),ylab="",border = NA,
+        names=rev(c(metadata$`Nyt navn uden formel`[match(colnames(controls),metadata$LV)],"sediment_mean","water_mean")))
+mtext("Read Abundance",side = 2,line=5)
+legend(40.5,1,rev(rownames(eukv4.c)),col=getPalette(dim(eukv4.c)[1]),cex=0.7,pch=15,pt.cex = 2,bty = "n", xpd = TRUE)
+dev.off()
+
+## class prop
+eukv4.c <-   as.matrix(minAbundance(CountTable(as.character(eukv4.pr2$Class),prop.table(as.matrix(cbind(controls,sedAVR,waterAVR)),margin=2),output = "Abundance"),minAbun=0.01))
+row.names(eukv4.c)[1] <- "Unknown"
+
+pdf("figures/eukv4.controls.class.prop.pdf",width=11,height=6)
+par(mar=c(8.5, 6.1, 1.1, 6.1),xpd=TRUE)
+barplot(eukv4.c[,dim(eukv4.c)[2]:1],las=2,cex.names=0.6,col=getPalette(dim(eukv4.c)[1]),ylab="",border = NA,
+        names=rev(c(metadata$`Nyt navn uden formel`[match(colnames(controls),metadata$LV)],"sediment_mean","water_mean")))
+mtext("Read Abundance",side = 2,line=5)
+legend(40.5,1,rev(rownames(eukv4.c)),col=getPalette(dim(eukv4.c)[1]),cex=0.4,pch=15,pt.cex = 1,bty = "n", xpd = TRUE)
+dev.off()
+
+unique(metadata$exp)
+
+
+### lets exclude a sample as it looks contaminated 
+metadata$LV == "LV7008887538"
+metadata$sample[metadata$LV == "LV7008887538"] <- "U"
+
+experiments <- c("ICE","ECOTIP","ROCS")
+
+for (experiment in experiments){
+  
+  controls <- eukv4.dat[,na.omit(match(metadata$LV[metadata$sample=="C" & grepl(experiment,metadata$exp) ],colnames(eukv4.dat)))]
+  exp <- eukv4.dat[,match(metadata$LV[(metadata$sample=="W" | metadata$sample=="S")& grepl(experiment,metadata$exp)],colnames(eukv4.dat))]
+  
+  exp1 <- dataCleanBy(exp,controls,"max")
+  exp2 <- minimumReads(exp1,minreads = 2)
+  controls1 <- minimumReads(controls,minreads = 1)
+  
+  colnames(exp2) <- metadata$`Nyt navn uden formel`[match(colnames(exp2),metadata$LV)]
+  colnames(controls1) <- metadata$`Nyt navn uden formel`[match(colnames(controls1),metadata$LV)]
+  
+  exp.out <-cbind(exp2,eukv4.pr2[match(rownames(exp2),eukv4.pr2$X.1),],eukv4.nt[match(rownames(exp2),eukv4.nt$OTU),])
+  ctl.out <-cbind(controls1,eukv4.pr2[match(rownames(controls1),eukv4.pr2$X.1),],eukv4.nt[match(rownames(controls1),eukv4.nt$OTU),]) 
+  
+  outname <- paste0("cleandata/eukv4.",experiment,".csv")
+  write.csv(exp.out,outname)
+  outname2 <- paste0("controlData/eukv4.",experiment,".csv")
+  write.csv(ctl.out,outname2)
+  
+}
+
+
+
+
+
+
+
+
+
 
